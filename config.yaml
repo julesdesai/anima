@@ -1,0 +1,86 @@
+# User configuration
+user:
+  name: "Jules"
+  corpus_path: "data/corpus/"
+
+# Model configuration - PRIMARY
+model:
+  primary: "gpt-4o"  # Using OpenAI for testing
+  fallback: "gpt-3.5-turbo"
+
+  # Model-specific configs
+  openai:
+    api_key_env: "OPENAI_API_KEY"
+    model: "gpt-4o"  # or "gpt-4-turbo-preview", "gpt-3.5-turbo"
+    max_tokens: 4096
+    temperature: 1.0
+    max_iterations: 20
+
+  claude:
+    api_key_env: "ANTHROPIC_API_KEY"
+    max_tokens: 4096
+    temperature: 1.0
+    max_iterations: 20
+
+  deepseek:
+    api_key_env: "DEEPSEEK_API_KEY"
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-reasoner"  # or "deepseek-chat"
+    max_tokens: 4096
+    temperature: 1.0
+    max_iterations: 20
+
+  hermes:
+    base_url: "http://localhost:8000/v1"  # vLLM endpoint
+    model: "NousResearch/Hermes-2-Pro-Llama-3-70B"
+    max_tokens: 2048  # Conservative for local
+    temperature: 0.7
+    max_iterations: 15  # Fewer due to context limits
+
+# Agent configuration
+agent:
+  max_tool_calls_per_iteration: 3
+  system_prompt_dir: "src/agent/prompts/"
+
+# Vector DB configuration
+vector_db:
+  provider: "qdrant"
+  host: "localhost"
+  port: 6333
+  collection_name: "user_corpus"
+
+# Embedding configuration
+embedding:
+  provider: "openai"
+  model: "text-embedding-3-large"
+  dimensions: 3072
+  batch_size: 100
+
+# Corpus processing
+corpus:
+  chunk_size: 800
+  chunk_overlap: 100
+  min_chunk_length: 100
+  file_types: [".txt", ".md", ".email", ".json", ".pdf", ".mbox"]
+
+# Retrieval configuration
+retrieval:
+  default_k: 50  # Increased to match fine-tuning data exposure (~40k chars, 10k tokens)
+  max_k: 100     # Allow up to 80k chars (20k tokens) - still well under 128k context limit
+  similarity_threshold: 0.5  # Lowered from 0.7 to catch more results
+
+  # Style grounding - always include representative samples
+  style_pack_enabled: true
+  style_pack_size: 10  # Number of diverse writing samples to always include
+
+# Style verification (optional)
+style:
+  verification_enabled: false
+  similarity_threshold: 0.75
+  verification_method: "embedding"  # or "llm_judge"
+
+# Cost tracking
+cost_tracking:
+  enabled: true
+  log_path: "logs/costs.json"
+  budget_alert_threshold: 10.0  # USD per day
