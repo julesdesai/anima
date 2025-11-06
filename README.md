@@ -2,68 +2,246 @@
 
 **Breathe life into ideas** — Animate any persona through their writings.
 
-A multi-persona RAG system that creates AI agents grounded in the writing style and knowledge of specific individuals or historical figures.
+Anima is a **multi-persona writing emulation system** that uses advanced RAG (Retrieval-Augmented Generation) to create AI agents that write in the exact style of specific individuals or historical figures. Unlike standard chatbots that *talk about* someone's ideas, Anima produces text that reads as if the person themselves wrote it.
+
+## What Makes Anima Different?
+
+- **Style-First Emulation**: Not just knowledge retrieval—captures sentence structure, vocabulary, rhetoric, and thought patterns
+- **Self-Orchestrating Protocol**: The LLM decides when and what to retrieve using a two-stage strategy (content + style)
+- **Isolated Personas**: Each persona has its own vector database collection with complete data separation
+- **Mandatory Grounding**: Every response must be traceable to the source corpus—no hallucinations or generic knowledge
+- **First-Person Voice**: Responses are written *as* the persona, not *about* them
 
 ## Quick Start
 
+**Try the included personas** (Taylor, Heidegger, Wittgenstein):
+
 ```bash
-# 1. Install
-python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+# 1. Install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-# 2. Configure
-cp .env.example .env && nano .env  # Add your API keys
-nano config.yaml                    # Configure personas
+# 2. Add your OpenAI API key
+cp .env.example .env
+echo "OPENAI_API_KEY=your-key-here" >> .env
 
-# 3. Start vector database
-docker-compose up -d && python scripts/setup_db.py
+# 3. Start Qdrant vector database
+docker-compose up -d
+python scripts/setup_db.py
 
-# 4. Add corpus files
-# Create a persona directory and add their writings
-mkdir -p data/corpus/your_persona
-# Add PDFs, text files, emails, chat logs, etc.
+# 4. Ingest a persona (e.g., Charles Taylor)
+python scripts/ingest_corpus.py --persona taylor --force
 
-# 5. Ingest corpus
-python scripts/ingest_corpus.py --persona your_persona --force
+# 5. Chat with Taylor
+python scripts/chat.py --persona taylor
+```
 
-# 6. Animate!
-python scripts/chat.py --persona your_persona
+Now ask: *"Tell me about the ethics of authenticity"* and watch Anima respond in Taylor's distinctive philosophical style.
+
+**Try other included personas:**
+```bash
+# Ingest Heidegger
+python scripts/ingest_corpus.py --persona heidegger --force
+python scripts/chat.py --persona heidegger
+
+# Ingest Wittgenstein
+python scripts/ingest_corpus.py --persona wittgenstein --force
+python scripts/chat.py --persona wittgenstein
+```
+
+## How It Works
+
+Anima uses a **self-orchestrating RAG protocol** where the LLM itself decides retrieval strategy:
+
+### The Two-Stage Retrieval Process
+
+1. **Content Retrieval** (k=80-100): Fetch relevant knowledge about the query topic
+2. **Style Retrieval** (k=80-100): Fetch examples of how the persona writes on related topics
+
+This exposes the model to **160-200 text chunks** (~100k+ characters) per response, providing deep immersion in both what they think and how they express it.
+
+### Style Emulation Features
+
+The system captures 5 dimensions of writing style:
+- **Sentence Structure**: Length patterns, nested clauses, rhythm
+- **Vocabulary**: Characteristic terminology, metaphors, formality level
+- **Rhetorical Moves**: How arguments are built, use of questions/qualifications
+- **Voice & Tone**: Intellectual personality, emotional register
+- **Thought Patterns**: How ideas connect, conceptual frameworks
+
+### Architecture
+
+```
+User Query
+    ↓
+System Prompt (includes 15 baseline style samples)
+    ↓
+LLM decides to search
+    ↓
+Hybrid Search (semantic + keyword, RRF fusion)
+    ↓
+80-100 content chunks + 80-100 style chunks
+    ↓
+LLM generates response in persona's voice
+```
+
+Each persona has an **isolated Qdrant collection** (e.g., `persona_taylor`, `persona_heidegger`) ensuring no data leakage.
+
+## Creating Your Own Persona
+
+Add anyone—yourself, a colleague, a historical figure, a fictional character:
+
+### 1. Add to `config.yaml`
+
+```yaml
+personas:
+  dostoyevsky:
+    name: "Fyodor Dostoyevsky"
+    corpus_path: "data/corpus/dostoyevsky/"
+    collection_name: "persona_dostoyevsky"
+    description: "Russian novelist, Crime and Punishment"
+    chunk_size: 1000  # Optional: override for narrative text
+```
+
+### 2. Gather Corpus Files
+
+Supported formats:
+- **PDFs** (`.pdf`) - Books, papers, articles
+- **Text files** (`.txt`, `.md`) - Any written content
+- **Emails** (`.mbox`) - Gmail/Outlook exports
+- **Chat logs** (`.json`) - Claude/GPT conversation exports
+
+```bash
+mkdir -p data/corpus/dostoyevsky
+cp ~/crime_and_punishment.pdf data/corpus/dostoyevsky/
+cp ~/brothers_karamazov.pdf data/corpus/dostoyevsky/
+cp ~/notes_from_underground.txt data/corpus/dostoyevsky/
+```
+
+### 3. Ingest and Animate
+
+```bash
+python scripts/ingest_corpus.py --persona dostoyevsky --force
+python scripts/chat.py --persona dostoyevsky
+```
+
+**For your own writing**, export:
+- Gmail as `.mbox` (Google Takeout)
+- ChatGPT/Claude conversations as `.json`
+- Your documents as PDFs or text files
+
+## Requirements
+
+- **Python 3.9+**
+- **Docker** (for Qdrant vector database)
+- **OpenAI API key** (or Claude/DeepSeek/Hermes)
+- ~2GB disk space per persona (for embeddings)
+
+## CLI Usage
+
+### Chat Interface
+
+```bash
+# Basic usage
+python scripts/chat.py --persona taylor
+
+# Use different LLM model
+python scripts/chat.py --persona heidegger --model claude
+
+# Non-interactive single query
+python scripts/chat.py --persona wittgenstein --query "What is the meaning of a word?"
+
+# Save conversation history
+python scripts/chat.py --persona taylor --save-history
+
+# Debug mode (show retrieval stats)
+python scripts/chat.py --persona taylor --debug
+```
+
+**Commands during chat:**
+- `exit` / `quit` - End session
+- `clear` - Reset conversation history
+- `history` - Show conversation history
+
+### Ingestion
+
+```bash
+# Full ingestion with force recreate
+python scripts/ingest_corpus.py --persona taylor --force
+
+# Incremental ingestion (only new files)
+python scripts/ingest_corpus.py --persona taylor
+
+# Custom directory
+python scripts/ingest_corpus.py --persona taylor --directory ~/my_texts/
+
+# Non-recursive (single directory only)
+python scripts/ingest_corpus.py --persona taylor --no-recursive
+```
+
+## Configuration
+
+Key settings in `config.yaml`:
+
+```yaml
+# Retrieval tuning
+retrieval:
+  default_k: 80              # Chunks per search
+  max_k: 120                 # Maximum allowed
+  similarity_threshold: 0.5  # Minimum cosine similarity
+  style_pack_size: 15        # Baseline style samples
+
+# Corpus processing
+corpus:
+  chunk_size: 800            # Characters per chunk
+  chunk_overlap: 100         # Overlap between chunks
+
+# Per-persona overrides
+personas:
+  philosopher:
+    chunk_size: 1200  # Larger chunks for dense text
 ```
 
 ## Features
 
-- **Multi-Persona System**: Animate multiple distinct personas (yourself, historical figures, philosophers, etc.)
-- **Isolated Collections**: Each persona has its own vector database collection
-- **Style Grounding**: Responses match the writing style of the source corpus
-- **Hybrid RAG**: Combines semantic and keyword search for better retrieval
-- **Streaming Responses**: Real-time response generation
-- **Multiple LLM Support**: OpenAI (GPT-4o), Claude, DeepSeek, Hermes
+- **Multi-Persona System**: Unlimited personas with complete isolation
+- **Style Grounding**: 15 baseline samples + 160-200 chunks per response
+- **Hybrid RAG**: Semantic (text-embedding-3-large) + keyword search with RRF fusion
+- **Streaming Responses**: Real-time generation with Rich terminal UI
+- **Multiple LLMs**: OpenAI (GPT-4o), Claude Sonnet, DeepSeek, Hermes
+- **Self-Orchestrating**: LLM decides retrieval strategy, no hardcoded rules
+- **Conversation History**: Multi-turn dialogues with context preservation
 
-## Creating a Persona
+## Use Cases
 
-1. **Add to config.yaml**:
-```yaml
-personas:
-  heidegger:
-    name: "Martin Heidegger"
-    corpus_path: "data/corpus/heidegger/"
-    collection_name: "persona_heidegger"
-    description: "German philosopher, Being and Time"
-```
+- **Personal Knowledge Base**: Animate yourself to recall your own writing and thoughts
+- **Historical Research**: Converse with historical figures in their authentic voice
+- **Literary Analysis**: Engage with authors in their distinctive style
+- **Philosophy Education**: Dialogue with philosophers as if they were present
+- **Creative Writing**: Collaborate with fictional characters or real authors
+- **Academic Research**: Query scholars' work in their own argumentative style
 
-2. **Add corpus files**:
-```bash
-mkdir -p data/corpus/heidegger
-cp ~/being_and_time.pdf data/corpus/heidegger/
-```
+## Technical Details
 
-3. **Ingest and chat**:
-```bash
-python scripts/ingest_corpus.py --persona heidegger --force
-python scripts/chat.py --persona heidegger
-```
+**Embeddings**: OpenAI `text-embedding-3-large` (3072 dimensions)
+**Vector DB**: Qdrant with hybrid search (semantic + keyword, RRF fusion)
+**Context Window**: Up to 128k tokens (GPT-4o)
+**Retrieval**: 160-200 chunks per response (~100k chars, ~25k tokens)
+**Protocol**: Natural language specification, self-orchestrating
 
-## Requirements
+## License
 
-- Python 3.9+
-- Docker
-- OpenAI API key (or other LLM provider)
+MIT License - See LICENSE file for details
+
+## Contributing
+
+Contributions welcome! Areas of interest:
+- Additional LLM providers
+- Enhanced style analysis metrics
+- Alternative embedding models
+- Performance optimizations
+
+## Acknowledgments
+
+Inspired by the concept of **heteronyms** (Fernando Pessoa) - distinct literary personas with their own voice, style, and worldview.
