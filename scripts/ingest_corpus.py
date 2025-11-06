@@ -24,11 +24,18 @@ def main():
     """Ingest corpus"""
     parser = argparse.ArgumentParser(description="Ingest corpus into vector database")
     parser.add_argument(
+        "--persona",
+        "-p",
+        type=str,
+        default=None,
+        help="Persona to ingest (e.g., 'jules', 'heidegger') - default from config",
+    )
+    parser.add_argument(
         "--directory",
         "-d",
         type=str,
         default=None,
-        help="Directory containing corpus files (default from config)",
+        help="Directory containing corpus files (overrides persona config)",
     )
     parser.add_argument(
         "--recursive",
@@ -52,11 +59,19 @@ def main():
     args = parser.parse_args()
 
     config = get_config()
-    ingester = CorpusIngester(config)
 
-    # Use directory from args or config
-    directory = args.directory or config.user.corpus_path
+    # Get persona
+    persona_id = args.persona or config.default_persona
+    persona = config.get_persona(persona_id)
 
+    # Create ingester for this persona
+    ingester = CorpusIngester(persona.collection_name, config)
+
+    # Use directory from args or persona config
+    directory = args.directory or persona.corpus_path
+
+    logger.info(f"Persona: {persona.name} ({persona_id})")
+    logger.info(f"Collection: {persona.collection_name}")
     logger.info(f"Ingesting corpus from: {directory}")
     logger.info(f"Recursive: {args.recursive}")
     logger.info(f"Force recreate: {args.force}")

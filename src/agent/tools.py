@@ -14,13 +14,20 @@ logger = logging.getLogger(__name__)
 class CorpusSearchTool:
     """Search tool for corpus retrieval"""
 
-    def __init__(self, config=None):
-        """Initialize search tool"""
+    def __init__(self, collection_name: str, config=None):
+        """
+        Initialize search tool.
+
+        Args:
+            collection_name: Name of the collection to search (e.g., "persona_jules")
+            config: Optional configuration object
+        """
         if config is None:
             config = get_config()
 
         self.config = config
-        self.db = VectorDatabase(config)
+        self.collection_name = collection_name
+        self.db = VectorDatabase(collection_name, config)
         self.embedder = EmbeddingGenerator(config)
         self._style_pack_cache = None  # Cache diverse style examples
 
@@ -164,7 +171,7 @@ class CorpusSearchTool:
         """Get tool definition for Claude API format"""
         return {
             "name": "search_corpus",
-            "description": "Search through the user's writing corpus using semantic similarity. Returns relevant excerpts from their emails, documents, thesis, and notes. IMPORTANT: Always use k=50 or higher to get sufficient context. Higher k means more comprehensive understanding.",
+            "description": "Search the user's writing corpus to retrieve examples of BOTH their ideas AND their writing style. Returns excerpts showing how they write, think, and express themselves. CRITICAL: Use k=80-100 to immerse yourself in their voice before generating responses. Higher k = better style emulation.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -174,7 +181,7 @@ class CorpusSearchTool:
                     },
                     "k": {
                         "type": "integer",
-                        "description": f"Number of results to return. Recommended: 50-100 for comprehensive answers. Max: {self.config.retrieval.max_k}. Higher is better for matching fine-tuning performance.",
+                        "description": f"Number of results to return. USE 80-100 for deep style immersion. The more examples you retrieve, the better you can emulate their exact writing style. Max: {self.config.retrieval.max_k}.",
                         "default": self.config.retrieval.default_k,
                     },
                     "time_range": {
@@ -207,7 +214,7 @@ class CorpusSearchTool:
             "type": "function",
             "function": {
                 "name": "search_corpus",
-                "description": "Search through the user's writing corpus using semantic similarity. Returns relevant excerpts from their emails, documents, thesis, and notes. IMPORTANT: Always use k=50 or higher to get sufficient context for comprehensive, grounded responses.",
+                "description": "Search the user's writing corpus to retrieve examples of BOTH their ideas AND their writing style. Returns excerpts showing how they write, think, and express themselves. CRITICAL: Use k=80-100 to immerse yourself in their voice before generating responses. Higher k = better style emulation.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -217,7 +224,7 @@ class CorpusSearchTool:
                         },
                         "k": {
                             "type": "integer",
-                            "description": f"Number of results to return. Recommended: 50-100 for comprehensive answers. Max: {self.config.retrieval.max_k}",
+                            "description": f"Number of results to return. USE 80-100 for deep style immersion. The more examples you retrieve, the better you can emulate their exact writing style. Max: {self.config.retrieval.max_k}",
                             "default": self.config.retrieval.default_k,
                         },
                         "time_range": {

@@ -14,21 +14,23 @@ logger = logging.getLogger(__name__)
 class BaseAgent(ABC):
     """Abstract base class for all model agents"""
 
-    def __init__(self, user_name: str, config=None):
+    def __init__(self, persona_id: str, config=None):
         """
         Initialize base agent.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
         """
         if config is None:
             config = get_config()
 
         self.config = config
-        self.user_name = user_name
+        self.persona_id = persona_id
+        self.persona = config.get_persona(persona_id)
+        self.user_name = self.persona.name  # For backwards compatibility
         self.max_iterations = 20
-        self.search_tool = CorpusSearchTool(config)
+        self.search_tool = CorpusSearchTool(self.persona.collection_name, config)
 
     @abstractmethod
     def _call_model(self, system: str, messages: List[Dict]) -> Any:

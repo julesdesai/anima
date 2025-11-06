@@ -42,11 +42,11 @@ def main():
         help="Model to use (claude, deepseek, hermes) - default from config",
     )
     parser.add_argument(
-        "--user",
-        "-u",
+        "--persona",
+        "-p",
         type=str,
         default=None,
-        help="User name - default from config",
+        help="Persona to animate (e.g., 'jules', 'heidegger') - default from config",
     )
     parser.add_argument(
         "--query",
@@ -91,18 +91,20 @@ def main():
     # Load config
     config = get_config()
 
-    # Get user name
-    user_name = args.user or config.user.name
+    # Get persona ID
+    persona_id = args.persona or config.default_persona
 
     # Create agent
     if args.model:
-        agent = AgentFactory.create(args.model, user_name, config)
+        agent = AgentFactory.create(args.model, persona_id, config)
     else:
-        agent = AgentFactory.create_primary(user_name, config)
+        agent = AgentFactory.create_primary(persona_id, config)
+
+    persona = config.get_persona(persona_id)
 
     if args.debug:
         logger.info(f"Using model: {agent.__class__.__name__}")
-        logger.info(f"Modeling user: {user_name}")
+        logger.info(f"Animating persona: {persona.name} ({persona_id})")
 
     # Single query mode
     if args.query:
@@ -169,9 +171,9 @@ def main():
     header.add_column(style="cyan", justify="right")
     header.add_column(style="white")
 
-    header.add_row("System:", "Castor - User-Aligned Assistant")
+    header.add_row("System:", "Anima")
     header.add_row("Model:", agent.__class__.__name__)
-    header.add_row("User:", user_name)
+    header.add_row("Persona:", f"{persona.name} ({persona_id})")
 
     # Show mode info
     modes = []
@@ -222,7 +224,8 @@ def main():
                     with open(filepath, "w") as f:
                         json.dump({
                             "timestamp": timestamp,
-                            "user": user_name,
+                            "persona_id": persona_id,
+                            "persona_name": persona.name,
                             "model": agent.__class__.__name__,
                             "conversation": conversation_history
                         }, f, indent=2)
@@ -347,7 +350,8 @@ def main():
                 with open(filepath, "w") as f:
                     json.dump({
                         "timestamp": timestamp,
-                        "user": user_name,
+                        "persona_id": persona_id,
+                        "persona_name": persona.name,
                         "model": agent.__class__.__name__,
                         "conversation": conversation_history
                     }, f, indent=2)

@@ -17,7 +17,7 @@ class HermesAgent(BaseAgent):
 
     def __init__(
         self,
-        user_name: str,
+        persona_id: str,
         config=None,
         base_url: Optional[str] = None,
         model: str = "NousResearch/Hermes-2-Pro-Llama-3-70B",
@@ -26,12 +26,12 @@ class HermesAgent(BaseAgent):
         Initialize Hermes agent.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
             base_url: vLLM endpoint URL (default from config)
             model: Hermes model identifier
         """
-        super().__init__(user_name, config)
+        super().__init__(persona_id, config)
 
         if base_url is None:
             base_url = self.config.model.hermes.base_url

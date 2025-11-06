@@ -1,4 +1,4 @@
-"""Configuration management for Castor"""
+"""Configuration management for Anima"""
 
 import os
 from typing import Optional, List
@@ -12,10 +12,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class UserConfig(BaseModel):
-    """User configuration"""
+class PersonaConfig(BaseModel):
+    """Persona configuration"""
     name: str
     corpus_path: str
+    collection_name: str
+    description: Optional[str] = None
+    # Optional per-persona overrides
+    chunk_size: Optional[int] = None
+    chunk_overlap: Optional[int] = None
+    similarity_threshold: Optional[float] = None
 
 
 class ModelSpecificConfig(BaseModel):
@@ -49,7 +55,6 @@ class VectorDBConfig(BaseModel):
     provider: str = "qdrant"
     host: str = "localhost"
     port: int = 6333
-    collection_name: str = "user_corpus"
 
 
 class EmbeddingConfig(BaseModel):
@@ -93,7 +98,8 @@ class CostTrackingConfig(BaseModel):
 
 class Config(BaseModel):
     """Main configuration"""
-    user: UserConfig
+    personas: dict[str, PersonaConfig]
+    default_persona: str
     model: ModelConfig
     agent: AgentConfig
     vector_db: VectorDBConfig
@@ -121,6 +127,30 @@ class Config(BaseModel):
         if model_config and model_config.api_key_env:
             return os.getenv(model_config.api_key_env)
         return None
+
+    def get_persona(self, persona_id: Optional[str] = None) -> PersonaConfig:
+        """
+        Get persona configuration by ID.
+
+        Args:
+            persona_id: Persona identifier. If None, returns default persona.
+
+        Returns:
+            PersonaConfig for the requested persona
+
+        Raises:
+            ValueError: If persona_id not found
+        """
+        if persona_id is None:
+            persona_id = self.default_persona
+
+        if persona_id not in self.personas:
+            available = ", ".join(self.personas.keys())
+            raise ValueError(
+                f"Persona '{persona_id}' not found. Available personas: {available}"
+            )
+
+        return self.personas[persona_id]
 
 
 # Global config instance

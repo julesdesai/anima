@@ -16,7 +16,7 @@ class ClaudeAgent(BaseAgent):
 
     def __init__(
         self,
-        user_name: str,
+        persona_id: str,
         config=None,
         model: str = "claude-sonnet-4.5-20250929",
     ):
@@ -24,11 +24,11 @@ class ClaudeAgent(BaseAgent):
         Initialize Claude agent.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
             model: Claude model identifier
         """
-        super().__init__(user_name, config)
+        super().__init__(persona_id, config)
 
         # Get API key
         api_key = self.config.get_api_key("claude")

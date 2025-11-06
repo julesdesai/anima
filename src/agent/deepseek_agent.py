@@ -17,7 +17,7 @@ class DeepSeekAgent(BaseAgent):
 
     def __init__(
         self,
-        user_name: str,
+        persona_id: str,
         config=None,
         model: str = "deepseek-reasoner",
     ):
@@ -25,11 +25,11 @@ class DeepSeekAgent(BaseAgent):
         Initialize DeepSeek agent.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
             model: DeepSeek model identifier (deepseek-reasoner or deepseek-chat)
         """
-        super().__init__(user_name, config)
+        super().__init__(persona_id, config)
 
         # Get API key
         api_key = self.config.get_api_key("deepseek")

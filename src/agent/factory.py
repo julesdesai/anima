@@ -19,7 +19,7 @@ class AgentFactory:
     @staticmethod
     def create(
         model_name: str,
-        user_name: str,
+        persona_id: str,
         config: Optional[Config] = None,
     ) -> BaseAgent:
         """
@@ -27,7 +27,7 @@ class AgentFactory:
 
         Args:
             model_name: Model identifier (e.g., "claude", "deepseek", "hermes")
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
 
         Returns:
@@ -40,39 +40,40 @@ class AgentFactory:
             config = get_config()
 
         model_name_lower = model_name.lower()
+        persona = config.get_persona(persona_id)
 
         # OpenAI (gpt-4, gpt-3.5, etc)
         if "gpt" in model_name_lower or "openai" in model_name_lower:
-            logger.info(f"Creating OpenAIAgent for user: {user_name}")
+            logger.info(f"Creating OpenAIAgent for persona: {persona.name}")
             return OpenAIAgent(
-                user_name=user_name,
+                persona_id=persona_id,
                 config=config,
                 model=model_name if model_name.startswith("gpt") else config.model.openai.model,
             )
 
         # Claude
         elif "claude" in model_name_lower:
-            logger.info(f"Creating ClaudeAgent for user: {user_name}")
+            logger.info(f"Creating ClaudeAgent for persona: {persona.name}")
             return ClaudeAgent(
-                user_name=user_name,
+                persona_id=persona_id,
                 config=config,
                 model=model_name if model_name.startswith("claude") else config.model.primary,
             )
 
         # DeepSeek
         elif "deepseek" in model_name_lower:
-            logger.info(f"Creating DeepSeekAgent for user: {user_name}")
+            logger.info(f"Creating DeepSeekAgent for persona: {persona.name}")
             return DeepSeekAgent(
-                user_name=user_name,
+                persona_id=persona_id,
                 config=config,
                 model=model_name if model_name.startswith("deepseek") else config.model.deepseek.model,
             )
 
         # Hermes
         elif "hermes" in model_name_lower:
-            logger.info(f"Creating HermesAgent for user: {user_name}")
+            logger.info(f"Creating HermesAgent for persona: {persona.name}")
             return HermesAgent(
-                user_name=user_name,
+                persona_id=persona_id,
                 config=config,
                 model=model_name if "/" in model_name else config.model.hermes.model,
             )
@@ -84,12 +85,12 @@ class AgentFactory:
             )
 
     @staticmethod
-    def create_primary(user_name: str, config: Optional[Config] = None) -> BaseAgent:
+    def create_primary(persona_id: str, config: Optional[Config] = None) -> BaseAgent:
         """
         Create agent using the primary model from config.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
 
         Returns:
@@ -99,15 +100,15 @@ class AgentFactory:
             config = get_config()
 
         logger.info(f"Creating primary agent: {config.model.primary}")
-        return AgentFactory.create(config.model.primary, user_name, config)
+        return AgentFactory.create(config.model.primary, persona_id, config)
 
     @staticmethod
-    def create_fallback(user_name: str, config: Optional[Config] = None) -> BaseAgent:
+    def create_fallback(persona_id: str, config: Optional[Config] = None) -> BaseAgent:
         """
         Create agent using the fallback model from config.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
 
         Returns:
@@ -117,4 +118,4 @@ class AgentFactory:
             config = get_config()
 
         logger.info(f"Creating fallback agent: {config.model.fallback}")
-        return AgentFactory.create(config.model.fallback, user_name, config)
+        return AgentFactory.create(config.model.fallback, persona_id, config)

@@ -21,14 +21,21 @@ logger = logging.getLogger(__name__)
 class CorpusIngester:
     """Ingest and process user corpus into vector database"""
 
-    def __init__(self, config=None):
-        """Initialize corpus ingester"""
+    def __init__(self, collection_name: str, config=None):
+        """
+        Initialize corpus ingester.
+
+        Args:
+            collection_name: Name of the collection to ingest into (e.g., "persona_jules")
+            config: Optional configuration object
+        """
         if config is None:
             config = get_config()
 
         self.config = config
+        self.collection_name = collection_name
         self.embedder = EmbeddingGenerator(config)
-        self.db = VectorDatabase(config)
+        self.db = VectorDatabase(collection_name, config)
 
         # Initialize PDF extractor if available
         self.pdf_extractor = None

@@ -17,7 +17,7 @@ class OpenAIAgent(BaseAgent):
 
     def __init__(
         self,
-        user_name: str,
+        persona_id: str,
         config=None,
         model: str = "gpt-4o",
     ):
@@ -25,11 +25,11 @@ class OpenAIAgent(BaseAgent):
         Initialize OpenAI agent.
 
         Args:
-            user_name: Name of the user being modeled
+            persona_id: Persona identifier (e.g., "jules", "heidegger")
             config: Optional configuration object
             model: OpenAI model identifier (gpt-4, gpt-4-turbo-preview, gpt-3.5-turbo)
         """
-        super().__init__(user_name, config)
+        super().__init__(persona_id, config)
 
         # Get API key
         api_key = os.getenv("OPENAI_API_KEY")

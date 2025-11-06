@@ -30,13 +30,19 @@ logger = logging.getLogger(__name__)
 class VectorDatabase:
     """Vector database interface for corpus storage and retrieval"""
 
-    def __init__(self, config=None):
-        """Initialize vector database connection"""
+    def __init__(self, collection_name: str, config=None):
+        """
+        Initialize vector database connection.
+
+        Args:
+            collection_name: Name of the collection to use (e.g., "persona_jules")
+            config: Optional configuration object
+        """
         if config is None:
             config = get_config()
 
         self.config = config
-        self.collection_name = config.vector_db.collection_name
+        self.collection_name = collection_name
 
         # Initialize Qdrant client
         self.client = QdrantClient(
@@ -45,7 +51,7 @@ class VectorDatabase:
         )
 
         logger.info(
-            f"Connected to Qdrant at {config.vector_db.host}:{config.vector_db.port}"
+            f"Connected to Qdrant at {config.vector_db.host}:{config.vector_db.port}, collection: {collection_name}"
         )
 
     def create_collection(self, force: bool = False) -> None:

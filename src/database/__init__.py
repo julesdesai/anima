@@ -1,1 +1,1 @@
-"""Database components for Castor"""
+"""Database components for Anima"""

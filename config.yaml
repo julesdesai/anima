@@ -1,7 +1,48 @@
-# User configuration
-user:
-  name: "Jules"
-  corpus_path: "data/corpus/"
+# Persona configurations - Add your personas here
+personas:
+  jules:
+    name: "Jules"
+    corpus_path: "data/corpus/jules/"
+    collection_name: "persona_jules"
+    description: "Jules Desai - AI researcher and philosopher"
+
+  taylor:
+    name: "Charles Taylor"
+    corpus_path: "data/corpus/taylor/"
+    collection_name: "persona_taylor"
+    description: "Canadian philosopher, Sources of the Self"
+    chunk_size: 1200  # Override for dense philosophical text  
+
+  heidegger:
+    name: "Martin Heidegger"
+    corpus_path: "data/corpus/heidegger/"
+    collection_name: "persona_heidegger"
+    description: "German philosopher, Being and Time"
+    chunk_size: 1200  # Override for dense philosophical text  
+
+  wittgenstein:
+    name: "Ludwig Wittgenstein"
+    corpus_path: "data/corpus/wittgenstein/"
+    collection_name: "persona_wittgenstein"
+    description: "German philosopher, Tractatus & Investigations"
+    chunk_size: 1200  # Override for dense philosophical text  
+
+  # Example personas (uncomment and configure as needed)
+  # heidegger:
+  #   name: "Martin Heidegger"
+  #   corpus_path: "data/corpus/heidegger/"
+  #   collection_name: "persona_heidegger"
+  #   description: "German philosopher, Being and Time"
+  #   chunk_size: 1200  # Override for dense philosophical text
+  #
+  # wittgenstein:
+  #   name: "Ludwig Wittgenstein"
+  #   corpus_path: "data/corpus/wittgenstein/"
+  #   collection_name: "persona_wittgenstein"
+  #   description: "Austrian philosopher, Tractatus & Investigations"
+
+# Default persona to use when not specified
+default_persona: "jules"
 
 # Model configuration - PRIMARY
 model:
@@ -47,7 +88,6 @@ vector_db:
   provider: "qdrant"
   host: "localhost"
   port: 6333
-  collection_name: "user_corpus"
 
 # Embedding configuration
 embedding:
@@ -65,13 +105,13 @@ corpus:
 
 # Retrieval configuration
 retrieval:
-  default_k: 50  # Increased to match fine-tuning data exposure (~40k chars, 10k tokens)
-  max_k: 100     # Allow up to 80k chars (20k tokens) - still well under 128k context limit
+  default_k: 80  # High retrieval for deep style immersion (~64k chars, 16k tokens)
+  max_k: 120     # Allow up to 96k chars (24k tokens) for comprehensive style exposure
   similarity_threshold: 0.5  # Lowered from 0.7 to catch more results
 
   # Style grounding - always include representative samples
   style_pack_enabled: true
-  style_pack_size: 10  # Number of diverse writing samples to always include
+  style_pack_size: 15  # Increased for richer style baseline
 
 # Style verification (optional)
 style:

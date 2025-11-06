@@ -1,15 +1,8 @@
-# User data - do not push personal information
-# Keep directory structure but exclude all files
-data/corpus/emails/*
-!data/corpus/emails/.gitkeep
-data/corpus/chats/*
-!data/corpus/chats/.gitkeep
-data/corpus/documents/*
-!data/corpus/documents/.gitkeep
-data/corpus/notes/*
-!data/corpus/notes/.gitkeep
-data/corpus/code/*
-!data/corpus/code/.gitkeep
+# Personal user data - do not push
+data/corpus/jules/
+
+# Historical/public figures' texts are included in repo
+# (heidegger, taylor, wittgenstein, etc. are public domain or academic texts)
 
 # Logs
 logs/*

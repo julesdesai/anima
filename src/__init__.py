@@ -1,2 +1,2 @@
-"""Castor - Self-Orchestrating User-Aligned Assistant"""
+"""Anima - Multi-Persona Animation System"""
 __version__ = "0.1.0"
