@@ -45,14 +45,28 @@ class ClaudeAgent(BaseAgent):
 
     def _call_model(self, system: str, messages: List[Dict]) -> Any:
         """Call Claude API"""
-        return self.client.messages.create(
-            model=self.model,
-            system=system,
-            messages=messages,
-            tools=[self.search_tool.get_tool_definition_claude()],
-            max_tokens=self.config.model.claude.max_tokens,
-            temperature=self.config.model.claude.temperature,
-        )
+        tools = [self.search_tool.get_tool_definition_claude()]
+
+        # Add incremental reasoning tool if enabled
+        if self.config.retrieval.incremental_mode.enabled:
+            tools.append(self.reasoning_tool.get_tool_definition_claude())
+
+        # Build API call parameters
+        api_params = {
+            "model": self.model,
+            "system": system,
+            "messages": messages,
+            "tools": tools,
+            "max_tokens": self.config.model.claude.max_tokens,
+            "temperature": self.config.model.claude.temperature,
+        }
+
+        # Claude uses tool_choice with "any" to force tool use
+        # Only force on first iteration
+        if self._should_force_tool_use():
+            api_params["tool_choice"] = {"type": "any"}
+
+        return self.client.messages.create(**api_params)
 
     def _is_complete(self, response: Any) -> bool:
         """Check if Claude has finished"""

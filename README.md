@@ -29,7 +29,7 @@ python scripts/ingest_corpus.py --persona taylor --force
 python scripts/chat.py --persona taylor
 ```
 
-Now ask: *"Tell me about the ethics of authenticity"* and watch Anima respond in Taylor's distinctive philosophical style.
+Now ask: *"Tell me about the ethics of inarticulacy"* and watch Anima respond in Taylor's distinctive philosophical style.
 
 **Try other included personas:**
 ```bash
@@ -98,17 +98,35 @@ personas:
 
 ### 2. Gather Corpus Files
 
+**Directory structure:**
+```
+data/corpus/{persona_id}/
+├── audio/              # Audio samples for voice cloning (optional)
+│   ├── sample1.mp3
+│   └── sample2.wav
+├── writings.txt        # Text corpus files
+├── papers.pdf
+└── emails.mbox
+```
+
 Supported formats:
 - **PDFs** (`.pdf`) - Books, papers, articles
 - **Text files** (`.txt`, `.md`) - Any written content
 - **Emails** (`.mbox`) - Gmail/Outlook exports
 - **Chat logs** (`.json`) - Claude/GPT conversation exports
+- **Audio** (`.mp3`, `.wav`, `.m4a`, etc.) - For voice cloning (optional)
 
 ```bash
-mkdir -p data/corpus/dostoyevsky
+# Create directory structure
+mkdir -p data/corpus/dostoyevsky/audio
+
+# Add text corpus
 cp ~/crime_and_punishment.pdf data/corpus/dostoyevsky/
 cp ~/brothers_karamazov.pdf data/corpus/dostoyevsky/
 cp ~/notes_from_underground.txt data/corpus/dostoyevsky/
+
+# Add audio for voice cloning (optional)
+cp ~/dostoyevsky_reading.mp3 data/corpus/dostoyevsky/audio/
 ```
 
 ### 3. Ingest and Animate
@@ -122,6 +140,83 @@ python scripts/chat.py --persona dostoyevsky
 - Gmail as `.mbox` (Google Takeout)
 - ChatGPT/Claude conversations as `.json`
 - Your documents as PDFs or text files
+- Voice recordings as audio files (for TTS)
+
+## Voice Cloning (Text-to-Speech)
+
+Anima can speak in the persona's voice using either free local TTS or cloud-based services.
+
+### Setup TTS
+
+**1. Install TTS dependencies:**
+```bash
+pip install -r requirements-tts.txt
+```
+
+**2. Choose provider in `config.yaml`:**
+```yaml
+tts:
+  enabled: true
+  provider: "local"  # Options: "local" (free, Coqui XTTS-v2) or "elevenlabs" (paid)
+  auto_play: true    # Automatically play audio
+```
+
+**3. Add audio sample to persona directory:**
+```bash
+# Add 6-30 seconds of clear speech
+cp voice_sample.mp3 data/corpus/{persona_id}/audio/
+```
+
+**4. Clone the voice:**
+```bash
+# Automatically finds audio in data/corpus/{persona}/audio/
+python scripts/clone_voice.py --persona dostoyevsky --auto-discover
+
+# Or specify audio files explicitly
+python scripts/clone_voice.py --persona dostoyevsky \
+  --audio-files path/to/audio.mp3
+```
+
+**5. Enable voice for persona in `config.yaml`:**
+```yaml
+personas:
+  dostoyevsky:
+    voice_enabled: true  # Script sets this automatically
+    voice_id: "dostoyevsky"  # Set by clone_voice.py
+```
+
+**6. Chat with voice:**
+```bash
+python scripts/chat.py --persona dostoyevsky
+# Responses will be spoken out loud!
+```
+
+### TTS Providers Comparison
+
+| Provider | Cost | Quality | Cloning | Speed |
+|----------|------|---------|---------|-------|
+| **Local** (Coqui XTTS-v2) | Free | High | ✅ Yes | Medium |
+| **ElevenLabs** | Paid API | Very High | ✅ Yes | Fast |
+
+**Local TTS** (recommended):
+- Free and open source
+- Voice cloning from 6+ seconds of audio
+- Runs entirely offline
+- ~2GB model download on first use
+
+**ElevenLabs**:
+- Requires API key: `export ELEVENLABS_API_KEY="your-key"`
+- Very high quality professional voices
+- Paid service ($5-$11/month)
+
+### Audio Requirements
+
+For best voice cloning results:
+- **Duration**: 6-30 seconds (local), 1-3 minutes (ElevenLabs)
+- **Quality**: Clear speech, single speaker
+- **Format**: MP3, WAV, M4A, OGG, FLAC, AAC
+- **Content**: Natural conversation or reading
+- **Environment**: Quiet, minimal background noise
 
 ## Requirements
 
@@ -129,6 +224,7 @@ python scripts/chat.py --persona dostoyevsky
 - **Docker** (for Qdrant vector database)
 - **OpenAI API key** (or Claude/DeepSeek/Hermes)
 - ~2GB disk space per persona (for embeddings)
+- **TTS (optional)**: Additional 2GB for Coqui XTTS-v2 model
 
 ## CLI Usage
 
@@ -198,6 +294,7 @@ personas:
 ## Features
 
 - **Multi-Persona System**: Unlimited personas with complete isolation
+- **Voice Cloning**: Free local TTS or cloud-based voice synthesis
 - **Style Grounding**: 15 baseline samples + 160-200 chunks per response
 - **Hybrid RAG**: Semantic (text-embedding-3-large) + keyword search with RRF fusion
 - **Streaming Responses**: Real-time generation with Rich terminal UI

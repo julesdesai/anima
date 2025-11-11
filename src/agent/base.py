@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from .tools import CorpusSearchTool
+from .tools import CorpusSearchTool, IncrementalReasoningTool
 from ..config import get_config
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,11 @@ class BaseAgent(ABC):
         self.user_name = self.persona.name  # For backwards compatibility
         self.max_iterations = 20
         self.search_tool = CorpusSearchTool(self.persona.collection_name, config)
+        self.reasoning_tool = IncrementalReasoningTool(
+            self.persona.collection_name,
+            self.persona.name,
+            config
+        )
 
     @abstractmethod
     def _call_model(self, system: str, messages: List[Dict]) -> Any:
@@ -155,6 +160,16 @@ class BaseAgent(ABC):
         """
         return None
 
+    def _should_force_tool_use(self) -> bool:
+        """
+        Determine if tool use should be forced for this iteration.
+        Only force on first iteration if force_tool_use is enabled.
+
+        Returns:
+            True if tools should be required, False otherwise
+        """
+        return self.config.agent.force_tool_use and self._current_tool_calls_count == 0
+
     def _execute_tool(self, tool_use: Dict) -> Any:
         """
         Execute a tool call.
@@ -172,6 +187,14 @@ class BaseAgent(ABC):
                 return result
             except Exception as e:
                 logger.error(f"Error executing search_corpus: {e}")
+                return {"error": str(e)}
+        elif tool_use["name"] == "check_incremental_reasoning":
+            try:
+                result = self.reasoning_tool.check_and_guide(**tool_use["input"])
+                logger.debug(f"Incremental reasoning check: OOD={result.get('is_ood', False)}")
+                return result
+            except Exception as e:
+                logger.error(f"Error executing check_incremental_reasoning: {e}")
                 return {"error": str(e)}
         else:
             logger.error(f"Unknown tool: {tool_use['name']}")
@@ -198,6 +221,7 @@ class BaseAgent(ABC):
             messages = [{"role": "user", "content": query}]
 
         tool_calls_log = []
+        self._current_tool_calls_count = 0  # Track for tool_choice logic
 
         logger.info(f"Starting agent loop for query: {query[:100]}...")
 
@@ -237,6 +261,7 @@ class BaseAgent(ABC):
                                 else 1,
                             }
                         )
+                        self._current_tool_calls_count += 1  # Increment counter
 
                     # Update conversation
                     messages = self._update_messages(messages, response, tool_results)

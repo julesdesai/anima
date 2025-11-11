@@ -49,10 +49,20 @@ class OpenAIAgent(BaseAgent):
         # Add system message to messages (OpenAI-style)
         full_messages = [{"role": "system", "content": system}] + messages
 
+        tools = [self.search_tool.get_tool_definition_openai()]
+
+        # Add incremental reasoning tool if enabled
+        if self.config.retrieval.incremental_mode.enabled:
+            tools.append(self.reasoning_tool.get_tool_definition_openai())
+
+        # Determine tool_choice based on config and iteration state
+        tool_choice = "required" if self._should_force_tool_use() else "auto"
+
         return self.client.chat.completions.create(
             model=self.model,
             messages=full_messages,
-            tools=[self.search_tool.get_tool_definition_openai()],
+            tools=tools,
+            tool_choice=tool_choice,
             temperature=1.0,
         )
 
@@ -82,6 +92,18 @@ class OpenAIAgent(BaseAgent):
         """Extract text from OpenAI response"""
         return response.choices[0].message.content or ""
 
+    def _format_tool_status(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
+        """Format a user-friendly status message for tool execution"""
+        if tool_name == "search_corpus":
+            query = tool_input.get("query", "")[:60]
+            k = tool_input.get("k", "default")
+            return f"Searching corpus for: \"{query}...\" (k={k})"
+        elif tool_name == "check_incremental_reasoning":
+            query = tool_input.get("query", "")[:60]
+            return f"Checking if query is out-of-distribution: \"{query}...\""
+        else:
+            return f"Executing tool: {tool_name}"
+
     def _update_messages(
         self, messages: List[Dict], response: Any, tool_results: List[Any]
     ) -> List[Dict]:
@@ -110,7 +132,7 @@ class OpenAIAgent(BaseAgent):
 
         return messages
 
-    def respond_stream(self, query: str, conversation_history: Optional[List[Dict]] = None) -> Generator[str, None, Dict]:
+    def respond_stream(self, query: str, conversation_history: Optional[List[Dict]] = None) -> Generator[Dict[str, Any], None, Dict]:
         """
         Stream response from the agent.
 
@@ -119,7 +141,9 @@ class OpenAIAgent(BaseAgent):
             conversation_history: Optional conversation history
 
         Yields:
-            Text chunks as they arrive
+            Dict with either:
+                - {"type": "text", "content": str} - Text chunk
+                - {"type": "status", "message": str, "tool": str} - Status update
 
         Returns:
             Final result dict with metadata
@@ -134,6 +158,7 @@ class OpenAIAgent(BaseAgent):
             messages = [{"role": "user", "content": query}]
 
         tool_calls_log = []
+        tools_called_count = 0  # Track for tool_choice logic
 
         logger.info(f"Starting streaming agent loop for query: {query[:100]}...")
 
@@ -144,11 +169,29 @@ class OpenAIAgent(BaseAgent):
                 # Add system message
                 full_messages = [{"role": "system", "content": system_prompt}] + messages
 
+                tools = [self.search_tool.get_tool_definition_openai()]
+
+                # Add incremental reasoning tool if enabled
+                if self.config.retrieval.incremental_mode.enabled:
+                    tools.append(self.reasoning_tool.get_tool_definition_openai())
+
+                logger.debug(f"Calling model with {len(tools)} tools available")
+                logger.debug(f"Tool names: {[t['function']['name'] for t in tools]}")
+
+                # Determine tool_choice: require tools only on first iteration if no tools called yet
+                # After first tool use, allow model to finish naturally
+                if self.config.agent.force_tool_use and tools_called_count == 0:
+                    tool_choice = "required"
+                else:
+                    tool_choice = "auto"
+                logger.debug(f"Tool choice: {tool_choice} (iteration {iteration + 1}, tools called: {tools_called_count})")
+
                 # Call with streaming
                 stream = self.client.chat.completions.create(
                     model=self.model,
                     messages=full_messages,
-                    tools=[self.search_tool.get_tool_definition_openai()],
+                    tools=tools,
+                    tool_choice=tool_choice,
                     temperature=1.0,
                     stream=True,
                 )
@@ -162,8 +205,11 @@ class OpenAIAgent(BaseAgent):
 
                     # Handle content
                     if delta.content:
+                        # If this is the first content, signal start of response
+                        if not collected_content:
+                            yield {"type": "status", "message": "Synthesizing response...", "tool": "generate"}
                         collected_content += delta.content
-                        yield delta.content
+                        yield {"type": "text", "content": delta.content}
 
                     # Handle tool calls
                     if hasattr(delta, 'tool_calls') and delta.tool_calls:
@@ -213,13 +259,46 @@ class OpenAIAgent(BaseAgent):
                             "name": tool_call["function"]["name"],
                             "input": json.loads(tool_call["function"]["arguments"]),
                         }
+
+                        # Yield status about tool execution
+                        status_message = self._format_tool_status(tool_use["name"], tool_use["input"])
+                        yield {"type": "status", "message": status_message, "tool": tool_use["name"]}
+
+                        # Yield thought fragment showing tool args
+                        if tool_use["name"] == "search_corpus":
+                            query_preview = tool_use["input"].get("query", "")[:40]
+                            yield {"type": "status", "message": f"query=\"{query_preview}...\", k={tool_use['input'].get('k', 'default')}", "tool": tool_use["name"]}
+                        elif tool_use["name"] == "check_incremental_reasoning":
+                            yield {"type": "status", "message": "Analyzing query distribution...", "tool": tool_use["name"]}
+
                         result = self._execute_tool(tool_use)
                         tool_results.append(result)
+                        tools_called_count += 1  # Increment counter
                         tool_calls_log.append({
                             "tool": tool_use["name"],
                             "input": tool_use["input"],
                             "result_count": len(result) if isinstance(result, list) else 1,
                         })
+
+                        # Yield completion status with fragments
+                        if isinstance(result, list) and len(result) > 0:
+                            yield {"type": "status", "message": f"✓ Retrieved {len(result)} results", "tool": tool_use["name"]}
+                            # Show snippet of first result
+                            first_text = result[0].get("text", "")[:50].replace("\n", " ")
+                            yield {"type": "status", "message": f"  \"{first_text}...\"", "tool": tool_use["name"]}
+                        elif isinstance(result, dict) and "is_ood" in result:
+                            ood_status = "out-of-distribution" if result.get("is_ood") else "in-distribution"
+                            yield {"type": "status", "message": f"Query is {ood_status}", "tool": tool_use["name"]}
+                            # Show reasoning fragment
+                            if result.get("is_ood") and result.get("reasoning"):
+                                reasoning_preview = result["reasoning"][:50]
+                                yield {"type": "status", "message": f"Reason: {reasoning_preview}...", "tool": tool_use["name"]}
+                            # Show guidance fragment if OOD
+                            if result.get("is_ood") and result.get("guidance"):
+                                guidance_preview = result["guidance"][:60].replace("\n", " ")
+                                yield {"type": "status", "message": f"Guidance: {guidance_preview}...", "tool": tool_use["name"]}
+                        else:
+                            yield {"type": "status", "message": "Complete", "tool": tool_use["name"]}
 
                         # Add tool result to messages
                         messages.append({

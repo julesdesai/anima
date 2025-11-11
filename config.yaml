@@ -1,126 +1,138 @@
-# Persona configurations - Add your personas here
 personas:
   jules:
-    name: "Jules"
-    corpus_path: "data/corpus/jules/"
-    collection_name: "persona_jules"
-    description: "Jules Desai - AI researcher and philosopher"
-
+    name: Jules
+    corpus_path: data/corpus/jules/
+    collection_name: persona_jules
+    description: Jules Desai - AI researcher and philosopher
   taylor:
-    name: "Charles Taylor"
-    corpus_path: "data/corpus/taylor/"
-    collection_name: "persona_taylor"
-    description: "Canadian philosopher, Sources of the Self"
-    chunk_size: 1200  # Override for dense philosophical text  
-
+    name: Charles Taylor
+    corpus_path: data/corpus/taylor/
+    collection_name: persona_taylor
+    description: Canadian philosopher, Sources of the Self
+    chunk_size: 1200
   heidegger:
-    name: "Martin Heidegger"
-    corpus_path: "data/corpus/heidegger/"
-    collection_name: "persona_heidegger"
-    description: "German philosopher, Being and Time"
-    chunk_size: 1200  # Override for dense philosophical text  
-
+    name: Martin Heidegger
+    corpus_path: data/corpus/heidegger/
+    collection_name: persona_heidegger
+    description: German philosopher, Being and Time
+    chunk_size: 1200
   wittgenstein:
-    name: "Ludwig Wittgenstein"
-    corpus_path: "data/corpus/wittgenstein/"
-    collection_name: "persona_wittgenstein"
-    description: "German philosopher, Tractatus & Investigations"
-    chunk_size: 1200  # Override for dense philosophical text  
-
-  # Example personas (uncomment and configure as needed)
-  # heidegger:
-  #   name: "Martin Heidegger"
-  #   corpus_path: "data/corpus/heidegger/"
-  #   collection_name: "persona_heidegger"
-  #   description: "German philosopher, Being and Time"
-  #   chunk_size: 1200  # Override for dense philosophical text
-  #
-  # wittgenstein:
-  #   name: "Ludwig Wittgenstein"
-  #   corpus_path: "data/corpus/wittgenstein/"
-  #   collection_name: "persona_wittgenstein"
-  #   description: "Austrian philosopher, Tractatus & Investigations"
-
-# Default persona to use when not specified
-default_persona: "jules"
-
-# Model configuration - PRIMARY
+    name: Ludwig Wittgenstein
+    corpus_path: data/corpus/wittgenstein/
+    collection_name: persona_wittgenstein
+    description: German philosopher, Tractatus & Investigations
+    chunk_size: 1200
+  aristotle:
+    name: Aristotle
+    corpus_path: data/corpus/aristotle/
+    collection_name: persona_aristotle
+    description: Greek philosopher, Nicomachean Ethics & Metaphysics
+    chunk_size: 1200
+  mac_lane:
+    name: Saunders Mac Lane
+    corpus_path: data/corpus/mac_lane/
+    collection_name: persona_mac_lane
+    description: Saunders Mac Lane - American mathematician
+  general_category_theorist:
+    name: General Category Theorist
+    corpus_path: data/corpus/general_category_theorist/
+    collection_name: persona_general_category_theorist
+    description: General Category Theorist - Mathematician and Philosopher
+  philipp_koralus:
+    name: Philipp Koralus
+    corpus_path: data/corpus/philipp_koralus/
+    collection_name: persona_philipp_koralus
+    description: Philipp Koralus - Philosopher
+  sasha:
+    name: A. S. Arridge
+    corpus_path: data/corpus/sasha/
+    collection_name: persona_sasha
+    description: A. S. Arridge - Philosopher
+    voice_enabled: true
+    voice_id: a._s._arridge_voice
+default_persona: jules
 model:
-  primary: "gpt-4o"  # Using OpenAI for testing
-  fallback: "gpt-3.5-turbo"
-
-  # Model-specific configs
+  primary: gpt-5
+  fallback: gpt-4o
   openai:
-    api_key_env: "OPENAI_API_KEY"
-    model: "gpt-4o"  # or "gpt-4-turbo-preview", "gpt-3.5-turbo"
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4o
     max_tokens: 4096
     temperature: 1.0
     max_iterations: 20
-
   claude:
-    api_key_env: "ANTHROPIC_API_KEY"
+    api_key_env: ANTHROPIC_API_KEY
     max_tokens: 4096
     temperature: 1.0
     max_iterations: 20
-
   deepseek:
-    api_key_env: "DEEPSEEK_API_KEY"
-    base_url: "https://api.deepseek.com"
-    model: "deepseek-reasoner"  # or "deepseek-chat"
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: https://api.deepseek.com
+    model: deepseek-reasoner
     max_tokens: 4096
     temperature: 1.0
     max_iterations: 20
-
   hermes:
-    base_url: "http://localhost:8000/v1"  # vLLM endpoint
-    model: "NousResearch/Hermes-2-Pro-Llama-3-70B"
-    max_tokens: 2048  # Conservative for local
+    base_url: http://localhost:8000/v1
+    model: NousResearch/Hermes-2-Pro-Llama-3-70B
+    max_tokens: 2048
     temperature: 0.7
-    max_iterations: 15  # Fewer due to context limits
-
-# Agent configuration
+    max_iterations: 15
 agent:
   max_tool_calls_per_iteration: 3
-  system_prompt_dir: "src/agent/prompts/"
-
-# Vector DB configuration
+  system_prompt_dir: src/agent/prompts/
+  force_tool_use: true
 vector_db:
-  provider: "qdrant"
-  host: "localhost"
+  provider: qdrant
+  host: localhost
   port: 6333
-
-# Embedding configuration
 embedding:
-  provider: "openai"
-  model: "text-embedding-3-large"
+  provider: openai
+  model: text-embedding-3-large
   dimensions: 3072
   batch_size: 100
-
-# Corpus processing
 corpus:
   chunk_size: 800
   chunk_overlap: 100
   min_chunk_length: 100
-  file_types: [".txt", ".md", ".email", ".json", ".pdf", ".mbox"]
-
-# Retrieval configuration
+  file_types:
+  - .txt
+  - .md
+  - .email
+  - .json
+  - .pdf
+  - .mbox
 retrieval:
-  default_k: 80  # High retrieval for deep style immersion (~64k chars, 16k tokens)
-  max_k: 120     # Allow up to 96k chars (24k tokens) for comprehensive style exposure
-  similarity_threshold: 0.5  # Lowered from 0.7 to catch more results
-
-  # Style grounding - always include representative samples
+  default_k: 80
+  max_k: 120
+  similarity_threshold: 0.5
   style_pack_enabled: true
-  style_pack_size: 15  # Increased for richer style baseline
-
-# Style verification (optional)
+  style_pack_size: 15
+  incremental_mode:
+    enabled: true
+    ood_check_model: gpt-4o-mini
+    max_corpus_concepts: 5
 style:
   verification_enabled: false
   similarity_threshold: 0.75
-  verification_method: "embedding"  # or "llm_judge"
-
-# Cost tracking
+  verification_method: embedding
 cost_tracking:
   enabled: true
-  log_path: "logs/costs.json"
-  budget_alert_threshold: 10.0  # USD per day
+  log_path: logs/costs.json
+  budget_alert_threshold: 10.0
+tts:
+  enabled: false
+  provider: local  # Options: "local" (XTTS-v2, voice cloning), "kokoro" (fast), "elevenlabs" (paid)
+  use_streaming: true  # Stream audio sentence-by-sentence (better UX)
+  use_gpu: true  # Use GPU acceleration if available (M1/M2/M3, CUDA)
+  api_key_env: ELEVENLABS_API_KEY
+  model: eleven_multilingual_v2
+  voice_stability: 0.5
+  voice_similarity_boost: 0.75
+  auto_play: true
+  save_audio: false
+  audio_output_dir: outputs/audio
+
+# Provider comparison (voice cloning support only):
+# - local (XTTS-v2): High quality, voice cloning, 0.5-2s/sentence with GPU + streaming
+# - elevenlabs: Best quality, voice cloning, 0.5-1s/sentence, requires API key (paid)

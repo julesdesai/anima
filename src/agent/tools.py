@@ -1,7 +1,10 @@
 """Tool definitions and implementations"""
 
 import logging
+import os
 from typing import List, Optional, Dict, Any
+
+from openai import OpenAI
 
 from ..database.vector_db import VectorDatabase
 from ..database.schema import SearchResult, SearchFilters, SourceType
@@ -243,6 +246,266 @@ class CorpusSearchTool:
                                 "enum": ["email", "chat", "document", "code", "note"],
                             },
                         },
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+
+
+class IncrementalReasoningTool:
+    """Tool for detecting OOD queries and providing reasoning guidance"""
+
+    def __init__(self, collection_name: str, persona_name: str, config=None):
+        """
+        Initialize incremental reasoning tool.
+
+        Args:
+            collection_name: Name of the corpus collection
+            persona_name: Name of the persona (for context in prompts)
+            config: Optional configuration object
+        """
+        if config is None:
+            config = get_config()
+
+        self.config = config
+        self.collection_name = collection_name
+        self.persona_name = persona_name
+        self.db = VectorDatabase(collection_name, config)
+        self.embedder = EmbeddingGenerator(config)
+
+        # Initialize OpenAI client for OOD checks
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.warning("OPENAI_API_KEY not found - incremental reasoning tool disabled")
+            self.client = None
+        else:
+            self.client = OpenAI(api_key=api_key)
+
+    def check_and_guide(self, query: str) -> Dict[str, Any]:
+        """
+        Check if query is out-of-distribution and provide reasoning guidance.
+
+        Args:
+            query: The user's query
+
+        Returns:
+            Dict with is_ood, confidence, guidance, and corpus_concepts
+        """
+        if not self.config.retrieval.incremental_mode.enabled:
+            return {
+                "is_ood": False,
+                "message": "Incremental mode is disabled"
+            }
+
+        if self.client is None:
+            return {
+                "is_ood": False,
+                "error": "OpenAI client not initialized - check API key"
+            }
+
+        logger.info(f"Checking if query is OOD: '{query[:100]}...'")
+
+        # Step 1: Find related corpus concepts
+        corpus_concepts = self._find_related_concepts(query)
+
+        # Step 2: Use LLM to check if query is OOD
+        ood_result = self._check_ood(query, corpus_concepts)
+
+        if not ood_result["is_ood"]:
+            return {
+                "is_ood": False,
+                "confidence": ood_result["confidence"],
+                "message": "Query appears to be within corpus distribution. Use standard corpus search."
+            }
+
+        # Step 3: Generate reasoning guidance
+        guidance = self._generate_guidance(query, corpus_concepts, ood_result)
+
+        logger.info(f"OOD detected (confidence: {ood_result['confidence']:.2f})")
+
+        return {
+            "is_ood": True,
+            "confidence": ood_result["confidence"],
+            "guidance": guidance,
+            "corpus_concepts": corpus_concepts,
+            "reasoning": ood_result.get("reasoning", "")
+        }
+
+    def _find_related_concepts(self, query: str) -> List[str]:
+        """
+        Find related concepts in corpus using semantic search.
+
+        Args:
+            query: The user's query
+
+        Returns:
+            List of related concept descriptions from corpus
+        """
+        try:
+            # Generate embedding for query
+            query_embedding = self.embedder.generate_one(query)
+
+            # Search for related content
+            max_concepts = self.config.retrieval.incremental_mode.max_corpus_concepts
+            results = self.db.search(
+                query_vector=query_embedding,
+                k=max_concepts
+            )
+
+            # Extract key concepts/topics from top results
+            concepts = []
+            for result in results:
+                # Get a snippet to represent this concept
+                text = result.text[:200].replace('\n', ' ').strip()
+                source = result.metadata.get('source', 'unknown')
+                concepts.append(f"{text}... (from {source})")
+
+            return concepts
+
+        except Exception as e:
+            logger.error(f"Error finding related concepts: {e}")
+            return []
+
+    def _check_ood(self, query: str, corpus_concepts: List[str]) -> Dict[str, Any]:
+        """
+        Use LLM to determine if query is out-of-distribution.
+
+        Args:
+            query: The user's query
+            corpus_concepts: Related concepts from corpus
+
+        Returns:
+            Dict with is_ood, confidence, and reasoning
+        """
+        concepts_text = "\n".join([f"- {c}" for c in corpus_concepts]) if corpus_concepts else "No closely related content found."
+
+        prompt = f"""You are analyzing whether a query can be directly answered from a person's writing corpus.
+
+PERSONA: {self.persona_name}
+
+QUERY: "{query}"
+
+RELATED CORPUS CONTENT:
+{concepts_text}
+
+TASK: Determine if this query is OUT-OF-DISTRIBUTION (OOD).
+
+A query is OOD if:
+- It asks about topics/concepts not covered in the corpus
+- It requires knowledge or perspectives not present in the person's writing
+- The related content found is only tangentially related
+
+A query is IN-DISTRIBUTION if:
+- The person has directly written about this topic
+- Their views/thoughts on this can be found in the corpus
+- The related content is directly relevant to answering the query
+
+Respond in JSON format:
+{{
+    "is_ood": true/false,
+    "confidence": 0.0-1.0,
+    "reasoning": "Brief explanation of your assessment"
+}}"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.config.retrieval.incremental_mode.ood_check_model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                max_tokens=300
+            )
+
+            import json
+            result = json.loads(response.choices[0].message.content)
+
+            logger.debug(f"OOD check result: {result}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error in OOD check: {e}")
+            return {
+                "is_ood": False,
+                "confidence": 0.0,
+                "reasoning": f"Error during OOD check: {str(e)}"
+            }
+
+    def _generate_guidance(
+        self,
+        query: str,
+        corpus_concepts: List[str],
+        ood_result: Dict[str, Any]
+    ) -> str:
+        """
+        Generate natural language reasoning guidance for OOD query.
+
+        Args:
+            query: The user's query
+            corpus_concepts: Related concepts from corpus
+            ood_result: Result from OOD check
+
+        Returns:
+            Natural language guidance string
+        """
+        concepts_list = "\n".join([f"- {c}" for c in corpus_concepts[:3]]) if corpus_concepts else "No directly related content found."
+
+        guidance = f"""This query extends beyond your direct corpus content. To address it thoughtfully while maintaining your authentic voice:
+
+**Foundation Phase:**
+First, ground yourself in what you have actually written about related concepts. Search your corpus for:
+{concepts_list}
+
+Let these genuine thoughts form your foundation. Review them thoroughly to immerse yourself in your actual views and reasoning patterns.
+
+**Bridging Phase:**
+Once grounded, build incrementally from that foundation. Consider:
+- How do the logical extensions of your documented views apply here?
+- What frameworks or thinking patterns from your writing are relevant?
+- Where does your actual knowledge end and extrapolation begin?
+
+**Response Phase:**
+Address the query while:
+- Maintaining your characteristic voice, tone, and thinking style
+- Being explicit when you're reasoning beyond your documented views
+- Not claiming to have written about things you haven't
+- Showing how you would think about this based on your established patterns
+
+The goal is thoughtful extrapolation that feels authentic to your intellectual style, not invention of views you've never held. Your thinking approach should remain consistent even when addressing new territory."""
+
+        return guidance
+
+    def get_tool_definition_claude(self) -> Dict[str, Any]:
+        """Get tool definition for Claude API format"""
+        return {
+            "name": "check_incremental_reasoning",
+            "description": "Check if a query is outside your corpus distribution and get guidance for incremental reasoning. Use this when a query seems to ask about topics you may not have directly written about. Returns whether the query is out-of-distribution along with a reasoning approach.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The query to check for out-of-distribution content",
+                    }
+                },
+                "required": ["query"],
+            },
+        }
+
+    def get_tool_definition_openai(self) -> Dict[str, Any]:
+        """Get tool definition for OpenAI/DeepSeek API format"""
+        return {
+            "type": "function",
+            "function": {
+                "name": "check_incremental_reasoning",
+                "description": "Check if a query is outside your corpus distribution and get guidance for incremental reasoning. Use this when a query seems to ask about topics you may not have directly written about. Returns whether the query is out-of-distribution along with a reasoning approach.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query to check for out-of-distribution content",
+                        }
                     },
                     "required": ["query"],
                 },

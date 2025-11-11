@@ -45,14 +45,29 @@ class VectorDatabase:
         self.collection_name = collection_name
 
         # Initialize Qdrant client
-        self.client = QdrantClient(
-            host=config.vector_db.host,
-            port=config.vector_db.port,
-        )
+        try:
+            self.client = QdrantClient(
+                host=config.vector_db.host,
+                port=config.vector_db.port,
+            )
 
-        logger.info(
-            f"Connected to Qdrant at {config.vector_db.host}:{config.vector_db.port}, collection: {collection_name}"
-        )
+            # Test connection by getting collections
+            self.client.get_collections()
+
+            logger.info(
+                f"Connected to Qdrant at {config.vector_db.host}:{config.vector_db.port}, collection: {collection_name}"
+            )
+        except ConnectionRefusedError as e:
+            error_msg = (
+                f"Failed to connect to Qdrant at {config.vector_db.host}:{config.vector_db.port}. "
+                f"Is Qdrant running? If using Docker, start it with: docker compose up -d"
+            )
+            logger.error(error_msg)
+            raise ConnectionError(error_msg) from e
+        except Exception as e:
+            error_msg = f"Error connecting to Qdrant: {e}"
+            logger.error(error_msg)
+            raise
 
     def create_collection(self, force: bool = False) -> None:
         """Create collection if it doesn't exist"""

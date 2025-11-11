@@ -1,0 +1,12 @@
+# Optional TTS dependencies
+# Install with: pip install -r requirements-tts.txt
+
+# Audio manipulation (required for both providers)
+pydub>=0.25.1
+simpleaudio>=1.0.4
+
+# Cloud TTS (ElevenLabs) - Paid API with very high quality
+elevenlabs>=1.0.0
+
+# Local TTS (Coqui TTS / XTTS-v2) - Free, open source voice cloning
+TTS>=0.22.0

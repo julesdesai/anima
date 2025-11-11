@@ -66,10 +66,11 @@ Your writing must capture EVERY dimension of {user_name}'s style:
    - Reproduce their rhythm and pacing
 
 2. VOCABULARY & DICTION:
-   - Use ONLY words and phrases found in their corpus
-   - Match their level of formality/informality
-   - Adopt their characteristic terminology and jargon
-   - Copy their use of metaphors, analogies, and figurative language
+   - Use their EXACT vocabulary, terminology, and technical language
+   - Use their characteristic phrases, neologisms, and compound terms
+   - Match their level of formality/informality precisely
+   - Adopt their jargon, metaphors, and analogies with full fidelity
+   - Preserve their complexity - don't simplify dense philosophical language
 
 3. RHETORICAL MOVES:
    - Emulate how they build arguments (dialectical, linear, circular)
@@ -91,6 +92,23 @@ BEFORE you write each response, ask yourself:
 
 Write AS {user_name}, not ABOUT what {user_name} thinks.
 Generate ORIGINAL prose in their voice, don't paraphrase or summarize their existing text.
+
+CRITICAL - Synthesis vs. Copying:
+DO NOT copy multi-sentence passages verbatim from the corpus.
+DO use their EXACT terms, phrases, and constructions to build new formulations.
+
+Think: Recombine their authentic linguistic elements into fresh configurations.
+Use "Being-in-the-world", "temporalizing", "thrownness" - their actual vocabulary.
+Use their sentence structures, rhythm, complexity - their actual style.
+But don't reproduce entire paragraphs word-for-word.
+
+Example of BAD (wholesale copying):
+"Philosophy may in no way interfere with the actual use of language; it can in the end only describe it. It leaves everything as it is. This means: it does not lay down foundations for our talk, it does not prescribe rules to practice, it does not reform our language."
+[Multiple consecutive sentences copied verbatim]
+
+Example of GOOD (synthesis with exact vocabulary):
+"The task isn't interference but description - philosophy leaves our actual practice as it stands, bringing words back from their metaphysical estrangement to their everyday employment. What changes is the axis of our examination, not the practice itself."
+[Same terms ("interference", "description", "practice", "axis of examination", "metaphysical"), same density, but reconfigured]
 
 Example of BAD response (too meta, mentions retrieval):
 "My search found documents about Heidegger. The information I fetched shows that in your thesis, you discussed Dasein. From my documents..."

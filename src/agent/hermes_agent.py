@@ -56,10 +56,20 @@ class HermesAgent(BaseAgent):
         # Add system message to messages
         full_messages = [{"role": "system", "content": system}] + messages
 
+        tools = [self.search_tool.get_tool_definition_openai()]
+
+        # Add incremental reasoning tool if enabled
+        if self.config.retrieval.incremental_mode.enabled:
+            tools.append(self.reasoning_tool.get_tool_definition_openai())
+
+        # Determine tool_choice based on config and iteration state
+        tool_choice = "required" if self._should_force_tool_use() else "auto"
+
         return self.client.chat.completions.create(
             model=self.model,
             messages=full_messages,
-            tools=[self.search_tool.get_tool_definition_openai()],
+            tools=tools,
+            tool_choice=tool_choice,
             temperature=self.config.model.hermes.temperature,
             max_tokens=self.config.model.hermes.max_tokens,
         )

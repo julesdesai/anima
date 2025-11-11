@@ -22,6 +22,9 @@ class PersonaConfig(BaseModel):
     chunk_size: Optional[int] = None
     chunk_overlap: Optional[int] = None
     similarity_threshold: Optional[float] = None
+    # TTS configuration
+    voice_id: Optional[str] = None  # Voice identifier for TTS
+    voice_enabled: bool = False  # Enable TTS for this persona
 
 
 class ModelSpecificConfig(BaseModel):
@@ -48,6 +51,7 @@ class AgentConfig(BaseModel):
     """Agent configuration"""
     max_tool_calls_per_iteration: int = 3
     system_prompt_dir: str = "src/agent/prompts/"
+    force_tool_use: bool = True  # Require model to use tools
 
 
 class VectorDBConfig(BaseModel):
@@ -73,6 +77,13 @@ class CorpusConfig(BaseModel):
     file_types: List[str] = Field(default_factory=lambda: [".txt", ".md", ".email", ".json"])
 
 
+class IncrementalModeConfig(BaseModel):
+    """Incremental reasoning configuration for OOD queries"""
+    enabled: bool = True
+    ood_check_model: str = "gpt-4o-mini"
+    max_corpus_concepts: int = 5
+
+
 class RetrievalConfig(BaseModel):
     """Retrieval configuration"""
     default_k: int = 5
@@ -80,6 +91,7 @@ class RetrievalConfig(BaseModel):
     similarity_threshold: float = 0.7
     style_pack_enabled: bool = False
     style_pack_size: int = 10
+    incremental_mode: IncrementalModeConfig = Field(default_factory=IncrementalModeConfig)
 
 
 class StyleConfig(BaseModel):
@@ -96,6 +108,21 @@ class CostTrackingConfig(BaseModel):
     budget_alert_threshold: float = 10.0
 
 
+class TTSConfig(BaseModel):
+    """Text-to-Speech configuration"""
+    enabled: bool = False
+    provider: str = "local"  # "local", "kokoro", or "elevenlabs"
+    use_streaming: bool = True  # Stream audio sentence-by-sentence
+    use_gpu: bool = True  # Use GPU acceleration if available
+    api_key_env: str = "ELEVENLABS_API_KEY"
+    model: str = "eleven_multilingual_v2"
+    voice_stability: float = 0.5
+    voice_similarity_boost: float = 0.75
+    auto_play: bool = True
+    save_audio: bool = False
+    audio_output_dir: str = "outputs/audio"
+
+
 class Config(BaseModel):
     """Main configuration"""
     personas: dict[str, PersonaConfig]
@@ -108,6 +135,7 @@ class Config(BaseModel):
     retrieval: RetrievalConfig
     style: StyleConfig
     cost_tracking: CostTrackingConfig
+    tts: TTSConfig = Field(default_factory=TTSConfig)
 
     @classmethod
     def from_yaml(cls, config_path: str = "config.yaml") -> "Config":
