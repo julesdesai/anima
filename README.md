@@ -2,7 +2,11 @@
 
 **HAI Lab Anima** - Animate (bring to life) any persona through their writings.
 
-Anima is an inference-only compute system that brings anyone to life from their past writings. It uses advanced agential self-orchestration and RAG to create AI agents that write in the exact style of specific individuals or historical figures. Unlike standard chatbots that *talk about* someone's ideas, Anima produces text that reads as if the person themselves wrote it. The system can be used in two main ways: public figures (e.g. academics and thinkers of the past) can be reanimated, and we can engage with them in simulated dialogue; or, one's personal writing (email, chat histories, written works) can be animated, to create a simulacra of one's own personality. We are working to allow  local embedding and inference, so that this latter is completely private and does not rely on centralised infrastructure.
+Anima is an inference-only compute system that brings anyone to life from their past writings. It uses advanced agential self-orchestration and RAG to create AI agents that write in the exact style of specific individuals or historical figures. Unlike standard chatbots that *talk about* someone's ideas, Anima produces text that reads as if the person themselves wrote it. The system can be used in three main ways: 1. public figures (e.g. academics and thinkers of the past or present) can be (re)animated, and we can engage with them in simulated dialogue; 2. non-existent experts can be summoned by depositing a variety of papers on a range of topics and animating them together; or, 3. personal animation: one's personal writing (email, chat histories, written works) can be animated, to create a simulacra of one's own personality which to an interesting extent, can grok their judgements, speech patterns and knowledge. 
+
+We are working to allow local embedding and inference, so that this latter use-case can be made completely private and does not rely on centralised infrastructure. Please note the current standard implentation uses external API providers, with some first-draft tools for local inference. 
+
+Please use this responsibly, and, if private data is used, with full consent from the author of that data.
 
 ## Quick Start
 
